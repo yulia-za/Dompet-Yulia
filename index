@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DompetKu - Catatan Keuangan & Multi Rekening</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- TOP NAVBAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i data-lucide="wallet-cards" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold bg-gradient-to-r from-brand-600 to-teal-700 bg-clip-text text-transparent">DompetKu</h1>
+          <p class="text-xs text-slate-600 font-medium hidden sm:block">Manajemen Multi-Rekening & Arus Kas Pribadi</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <button onclick="openWalletModal()" class="inline-flex items-center px-3.5 py-2 text-sm font-semibold rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 transition">
+          <i data-lucide="credit-card" class="w-4 h-4 mr-2 text-brand-600"></i>
+          <span>Kelola Dompet / Rekening</span>
+        </button>
+        <button onclick="openTxModal()" class="inline-flex items-center px-3.5 py-2 text-sm font-semibold rounded-lg text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition">
+          <i data-lucide="plus-circle" class="w-4 h-4 mr-2"></i>
+          <span>Catat Transaksi</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
+
+    <!-- TOTAL SALDO & RINGKASAN UTAMA -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Total Kekayaan Bersih -->
+      <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div class="relative z-10">
+          <span class="text-xs font-semibold tracking-wider uppercase text-slate-400">Total Saldo (Semua Akun)</span>
+          <h3 id="statTotalSaldo" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight">Rp 0</h3>
+          <p class="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+            Akumulasi dari rekening bank, e-wallet & kas tunai
+          </p>
+        </div>
+        <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-brand-500/10 rounded-full blur-2xl"></div>
+      </div>
+
+      <!-- Total Pemasukan Bulan Ini -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <span class="text-xs font-semibold uppercase text-slate-600">Pemasukan (Bulan Ini)</span>
+          <h3 id="statBulanPemasukan" class="text-xl sm:text-2xl font-bold text-emerald-600 mt-1">Rp 0</h3>
+          <span class="text-xs text-slate-600" id="statTxMasukCount">0 transaksi</span>
+        </div>
+        <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+          <i data-lucide="arrow-down-left" class="w-6 h-6"></i>
+        </div>
+      </div>
+
+      <!-- Total Pengeluaran Bulan Ini -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <span class="text-xs font-semibold uppercase text-slate-600">Pengeluaran (Bulan Ini)</span>
+          <h3 id="statBulanPengeluaran" class="text-xl sm:text-2xl font-bold text-rose-600 mt-1">Rp 0</h3>
+          <span class="text-xs text-slate-600" id="statTxKeluarCount">0 transaksi</span>
+        </div>
+        <div class="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600">
+          <i data-lucide="arrow-up-right" class="w-6 h-6"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEKSI REKENING & DOMPET (CARD LIST) -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">Daftar Rekening & Dompet Anda</h2>
+          <p class="text-xs text-slate-600">Pilih salah satu akun di bawah untuk memfilter riwayat transaksi</p>
+        </div>
+        <button onclick="openWalletModal()" class="text-xs text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Akun Baru
+        </button>
+      </div>
+
+      <!-- Wallet Cards Grid -->
+      <div id="walletCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- CHARTS & SUMMARY -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Grafik Alokasi Pengeluaran -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm lg:col-span-1">
+        <h3 class="text-base font-bold text-slate-800 mb-1">Proporsi Pengeluaran</h3>
+        <p class="text-xs text-slate-600 mb-4">Distribusi pengeluaran berdasarkan kategori</p>
+        <div class="h-56 relative flex items-center justify-center">
+          <canvas id="expenseCategoryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Grafik Komposisi Saldo per Akun -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-800">Saldo per Akun / Dompet</h3>
+            <p class="text-xs text-slate-600">Sebaran total dana aktif Anda saat ini</p>
+          </div>
+        </div>
+        <div class="h-56 relative">
+          <canvas id="walletBalanceChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIWAYAT TRANSAKSI & FILTER -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- Toolbar Filter -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <h3 class="text-base font-bold text-slate-800">Riwayat Transaksi</h3>
+          <span id="activeFilterBadge" class="hidden text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-medium"></span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Search -->
+          <div class="relative min-w-[160px]">
+            <input type="text" id="searchInput" oninput="renderTransactions()" placeholder="Cari catatan..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+          </div>
+
+          <!-- Filter Akun -->
+          <select id="filterWallet" onchange="renderTransactions()" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
+            <option value="ALL">Semua Dompet / Rekening</option>
+            <!-- Generated via JS -->
+          </select>
+
+          <!-- Filter Tipe -->
+          <select id="filterType" onchange="renderTransactions()" class="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
+            <option value="ALL">Semua Tipe</option>
+            <option value="INCOME">Pemasukan</option>
+            <option value="EXPENSE">Pengeluaran</option>
+            <option value="TRANSFER">Transfer Antar Dompet</option>
+          </select>
+
+          <!-- Export CSV -->
+          <button onclick="exportToCSV()" title="Unduh CSV" class="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-600 transition">
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Transaction List / Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-slate-100/75 text-slate-500 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
+              <th class="py-3 px-4">Tanggal</th>
+              <th class="py-3 px-4">Tipe & Kategori</th>
+              <th class="py-3 px-4">Dompet / Rekening</th>
+              <th class="py-3 px-4">Keterangan</th>
+              <th class="py-3 px-4 text-right">Nominal</th>
+              <th class="py-3 px-4 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="txTableBody" class="divide-y divide-slate-100 text-slate-700">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="txEmptyState" class="hidden text-center py-12 px-4">
+        <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400 mb-3">
+          <i data-lucide="receipt-text" class="w-6 h-6"></i>
+        </div>
+        <p class="text-sm font-semibold text-slate-600">Belum ada transaksi</p>
+        <p class="text-xs text-slate-600 mt-1">Mulai catat pengeluaran, pemasukan, atau transfer Anda.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL: KELOLA DOMPET & REKENING -->
+  <div id="walletModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-800">Kelola Rekening & Dompet Digital</h3>
+          <p class="text-xs text-slate-600">Atur akun bank, e-wallet, dan saldo awal Anda</p>
+        </div>
+        <button onclick="closeWalletModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-5">
+        <!-- List Existing Wallets -->
+        <div class="space-y-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-600">Daftar Akun Terdaftar</span>
+          <div id="modalWalletList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <!-- Generated via JS -->
+          </div>
+        </div>
+
+        <!-- Form Tambah / Edit Dompet -->
+        <form id="walletForm" onsubmit="saveWallet(event)" class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+          <input type="hidden" id="editWalletId" value="">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1" id="walletFormTitle">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-brand-600"></i> Tambah Akun Baru
+          </span>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Nama Akun / Bank</label>
+              <input type="text" id="walletName" placeholder="Contoh: BCA, GoPay, Tunai" required class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Jenis Akun</label>
+              <select id="walletType" required class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                <option value="BANK">Rekening Bank</option>
+                <option value="EWALLET">Dompet Online / E-Wallet</option>
+                <option value="CASH">Uang Tunai / Cash</option>
+                <option value="INVESTMENT">Tabungan / Investasi</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Saldo Awal (Rp)</label>
+              <input type="number" id="walletInitialBalance" placeholder="0" min="0" required class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Warna Kartu</label>
+              <select id="walletColor" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                <option value="blue">Biru (Umum/Bank)</option>
+                <option value="emerald">Hijau (E-Wallet/GoPay)</option>
+                <option value="purple">Ungu (OVO)</option>
+                <option value="orange">Oranye (ShopeePay)</option>
+                <option value="amber">Kuning / Emas</option>
+                <option value="slate">Abu-abu / Netral</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" onclick="resetWalletForm()" id="btnCancelEditWallet" class="hidden px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg">Batal</button>
+            <button type="submit" class="px-4 py-1.5 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Simpan Akun</button>
+          </div>
+        </form>
+      </div>
+      <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+        <button onclick="closeWalletModal()" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CATAT TRANSAKSI / TRANSFER -->
+  <div id="txModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-800" id="txModalTitle">Catat Transaksi Baru</h3>
+          <p class="text-xs text-slate-600">Simpan arus masuk, keluar, atau transfer saldo</p>
+        </div>
+        <button onclick="closeTxModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="txForm" onsubmit="saveTransaction(event)" class="p-5 overflow-y-auto space-y-4">
+        <input type="hidden" id="editTxId" value="">
+
+        <!-- Tipe Transaksi (Pemasukan / Pengeluaran / Transfer) -->
+        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+          <button type="button" onclick="setTxType('EXPENSE')" id="typeBtnExpense" class="py-2 rounded-lg transition text-white bg-rose-600 shadow-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Pengeluaran
+          </button>
+          <button type="button" onclick="setTxType('INCOME')" id="typeBtnIncome" class="py-2 rounded-lg transition hover:bg-white/60 flex items-center justify-center gap-1.5">
+            <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i> Pemasukan
+          </button>
+          <button type="button" onclick="setTxType('TRANSFER')" id="typeBtnTransfer" class="py-2 rounded-lg transition hover:bg-white/60 flex items-center justify-center gap-1.5">
+            <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i> Transfer
+          </button>
+        </div>
+
+        <!-- Nominal & Tanggal -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Nominal (Rp)</label>
+            <input type="number" id="txAmount" placeholder="0" min="1" required class="w-full px-3 py-2 text-sm font-semibold rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Tanggal</label>
+            <input type="date" id="txDate" required class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none">
+          </div>
+        </div>
+
+        <!-- Pilihan Akun (Dynamic: Source & Destination untuk Transfer) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="walletSelectionSection">
+          <div id="sourceWalletContainer">
+            <label class="block text-xs font-medium text-slate-600 mb-1" id="sourceWalletLabel">Gunakan Dompet / Rekening</label>
+            <select id="txSourceWallet" required class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+              <!-- Rendered via JS -->
+            </select>
+          </div>
+
+          <div id="destWalletContainer" class="hidden">
+            <label class="block text-xs font-medium text-slate-600 mb-1">Ditransfer Ke Dompet / Rekening</label>
+            <select id="txDestWallet" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+              <!-- Rendered via JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Kategori (Hanya untuk Income / Expense) -->
+        <div id="categoryContainer">
+          <label class="block text-xs font-medium text-slate-600 mb-1">Kategori</label>
+          <select id="txCategory" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+            <!-- Rendered dynamically -->
+          </select>
+        </div>
+
+        <!-- Keterangan / Catatan -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Keterangan / Catatan</label>
+          <input type="text" id="txNotes" placeholder="Contoh: Makan siang, Top-up e-wallet, Gaji bulanan" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeTxModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Batal</button>
+          <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm">Simpan Transaksi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMsg">Pesan</span>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // DATA STATE
+    const STORAGE_KEY_WALLETS = 'dompetku_wallets_v2';
+    const STORAGE_KEY_TX = 'dompetku_transactions_v2';
+
+    // Default Akun Awal jika pengguna baru pertama kali membuka aplikasi
+    const DEFAULT_WALLETS = [
+      { id: 'w1', name: 'BCA Tabungan', type: 'BANK', initialBalance: 2500000, color: 'blue' },
+      { id: 'w2', name: 'GoPay / OVO', type: 'EWALLET', initialBalance: 150000, color: 'emerald' },
+      { id: 'w3', name: 'Dompet Tunai (Cash)', type: 'CASH', initialBalance: 200000, color: 'slate' }
+    ];
+
+    const EXPENSE_CATEGORIES = ['Makanan & Minuman', 'Transportasi', 'Belanja Harian', 'Tagihan & Utilitas', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
+    const INCOME_CATEGORIES = ['Gaji & Upah', 'Bonus & THR', 'Bisnis / Usaha', 'Hasil Investasi', 'Hadiah / Uang Masuk', 'Lainnya'];
+
+    let wallets = JSON.parse(localStorage.getItem(STORAGE_KEY_WALLETS)) || DEFAULT_WALLETS;
+    let transactions = JSON.parse(localStorage.getItem(STORAGE_KEY_TX)) || [];
+    let currentTxType = 'EXPENSE';
+    let selectedFilterWalletId = 'ALL';
+
+    // Chart instances
+    let expenseChartInstance = null;
+    let balanceChartInstance = null;
+
+    // INIT
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+      populateCategoryOptions();
+      refreshAll();
+      lucide.createIcons();
+    });
+
+    // REFRESH FULL UI
+    function refreshAll() {
+      saveToStorage();
+      renderWalletCards();
+      populateWalletDropdowns();
+      renderTransactions();
+      updateDashboardStats();
+      renderCharts();
+      lucide.createIcons();
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(STORAGE_KEY_WALLETS, JSON.stringify(wallets));
+      localStorage.setItem(STORAGE_KEY_TX, JSON.stringify(transactions));
+    }
+
+    // HITUNG SALDO SPESIFIK AKUN
+    function calculateWalletBalance(walletId) {
+      const wallet = wallets.find(w => w.id === walletId);
+      if (!wallet) return 0;
+      let balance = Number(wallet.initialBalance) || 0;
+
+      transactions.forEach(tx => {
+        const amt = Number(tx.amount) || 0;
+        if (tx.type === 'INCOME' && tx.sourceWalletId === walletId) {
+          balance += amt;
+        } else if (tx.type === 'EXPENSE' && tx.sourceWalletId === walletId) {
+          balance -= amt;
+        } else if (tx.type === 'TRANSFER') {
+          if (tx.sourceWalletId === walletId) balance -= amt; // Saldo keluar dari dompet asal
+          if (tx.destWalletId === walletId) balance += amt;   // Saldo masuk ke dompet tujuan
+        }
+      });
+      return balance;
+    }
+
+    // UPDATE RINGKASAN ATAS
+    function updateDashboardStats() {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      let totalWealth = 0;
+      wallets.forEach(w => {
+        totalWealth += calculateWalletBalance(w.id);
+      });
+
+      let monthIncome = 0;
+      let monthExpense = 0;
+      let inCount = 0;
+      let outCount = 0;
+
+      transactions.forEach(tx => {
+        const d = new Date(tx.date);
+        if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
+          if (tx.type === 'INCOME') {
+            monthIncome += Number(tx.amount);
+            inCount++;
+          } else if (tx.type === 'EXPENSE') {
+            monthExpense += Number(tx.amount);
+            outCount++;
+          }
+        }
+      });
+
+      document.getElementById('statTotalSaldo').textContent = formatIDR(totalWealth);
+      document.getElementById('statBulanPemasukan').textContent = formatIDR(monthIncome);
+      document.getElementById('statBulanPengeluaran').textContent = formatIDR(monthExpense);
+      document.getElementById('statTxMasukCount').textContent = `${inCount} transaksi bulan ini`;
+      document.getElementById('statTxKeluarCount').textContent = `${outCount} transaksi bulan ini`;
+    }
+
+    // RENDER KARTU-KARTU DOMPET / REKENING
+    function renderWalletCards() {
+      const container = document.getElementById('walletCardsContainer');
+      container.innerHTML = '';
+
+      wallets.forEach(w => {
+        const currentBal = calculateWalletBalance(w.id);
+        const isFiltered = (selectedFilterWalletId === w.id);
+
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-xl border transition cursor-pointer relative overflow-hidden ${
+          isFiltered 
+            ? 'border-brand-600 bg-brand-50/40 ring-2 ring-brand-500/20' 
+            : 'border-slate-200 bg-white hover:border-brand-300 hover:shadow-sm'
+        }`;
+        card.onclick = () => filterByWalletCard(w.id);
+
+        const badgeInfo = getWalletBadgeInfo(w.type);
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeInfo.bg} ${badgeInfo.text}">
+              <i data-lucide="${badgeInfo.icon}" class="w-3 h-3"></i>
+              ${badgeInfo.label}
+            </span>
+            <span class="text-[10px] text-slate-600 font-mono">Awal: ${formatIDR(w.initialBalance)}</span>
+          </div>
+          <div class="text-sm font-bold text-slate-800 truncate">${w.name}</div>
+          <div class="text-lg font-extrabold mt-1 ${currentBal >= 0 ? 'text-slate-900' : 'text-rose-600'}">
+            ${formatIDR(currentBal)}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function getWalletBadgeInfo(type) {
+      switch (type) {
+        case 'BANK': return { label: 'Bank', icon: 'building', bg: 'bg-blue-50', text: 'text-blue-700' };
+        case 'EWALLET': return { label: 'E-Wallet', icon: 'smartphone', bg: 'bg-emerald-50', text: 'text-emerald-700' };
+        case 'CASH': return { label: 'Cash / Tunai', icon: 'banknote', bg: 'bg-slate-100', text: 'text-slate-700' };
+        case 'INVESTMENT': return { label: 'Tabungan / Invest', icon: 'trending-up', bg: 'bg-purple-50', text: 'text-purple-700' };
+        default: return { label: 'Lainnya', icon: 'wallet', bg: 'bg-slate-100', text: 'text-slate-700' };
+      }
+    }
+
+    function filterByWalletCard(walletId) {
+      if (selectedFilterWalletId === walletId) {
+        selectedFilterWalletId = 'ALL';
+      } else {
+        selectedFilterWalletId = walletId;
+      }
+      document.getElementById('filterWallet').value = selectedFilterWalletId;
+      renderWalletCards();
+      renderTransactions();
+    }
+
+    // POPULATE DROPDOWNS UNTUK REKENING
+    function populateWalletDropdowns() {
+      const srcSelect = document.getElementById('txSourceWallet');
+      const dstSelect = document.getElementById('txDestWallet');
+      const filterSelect = document.getElementById('filterWallet');
+
+      srcSelect.innerHTML = '';
+      dstSelect.innerHTML = '';
+      filterSelect.innerHTML = '<option value="ALL">Semua Dompet / Rekening</option>';
+
+      wallets.forEach(w => {
+        const bal = calculateWalletBalance(w.id);
+        const opt = `<option value="${w.id}">${w.name} (${formatIDR(bal)})</option>`;
+        srcSelect.insertAdjacentHTML('beforeend', opt);
+        dstSelect.insertAdjacentHTML('beforeend', opt);
+
+        const filterOpt = `<option value="${w.id}">${w.name}</option>`;
+        filterSelect.insertAdjacentHTML('beforeend', filterOpt);
+      });
+
+      filterSelect.value = selectedFilterWalletId;
+    }
+
+    function populateCategoryOptions() {
+      const catSelect = document.getElementById('txCategory');
+      catSelect.innerHTML = '';
+      const list = (currentTxType === 'INCOME') ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+      list.forEach(c => {
+        catSelect.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+      });
+    }
+
+    // FORM TRANSAKSI LOGIC
+    function setTxType(type) {
+      currentTxType = type;
+      const bExp = document.getElementById('typeBtnExpense');
+      const bInc = document.getElementById('typeBtnIncome');
+      const bTrf = document.getElementById('typeBtnTransfer');
+      const catContainer = document.getElementById('categoryContainer');
+      const destContainer = document.getElementById('destWalletContainer');
+      const srcLabel = document.getElementById('sourceWalletLabel');
+
+      [bExp, bInc, bTrf].forEach(b => {
+        b.className = 'py-2 rounded-lg transition hover:bg-white/60 flex items-center justify-center gap-1.5';
+      });
+
+      if (type === 'EXPENSE') {
+        bExp.className = 'py-2 rounded-lg transition text-white bg-rose-600 shadow-sm flex items-center justify-center gap-1.5';
+        catContainer.classList.remove('hidden');
+        destContainer.classList.add('hidden');
+        srcLabel.textContent = 'Bayar Dari Dompet / Rekening';
+      } else if (type === 'INCOME') {
+        bInc.className = 'py-2 rounded-lg transition text-white bg-emerald-600 shadow-sm flex items-center justify-center gap-1.5';
+        catContainer.classList.remove('hidden');
+        destContainer.classList.add('hidden');
+        srcLabel.textContent = 'Masuk Ke Dompet / Rekening';
+      } else if (type === 'TRANSFER') {
+        bTrf.className = 'py-2 rounded-lg transition text-white bg-blue-600 shadow-sm flex items-center justify-center gap-1.5';
+        catContainer.classList.add('hidden');
+        destContainer.classList.remove('hidden');
+        srcLabel.textContent = 'Dari Dompet (Asal)';
+      }
+
+      populateCategoryOptions();
+      lucide.createIcons();
+    }
+
+    function saveTransaction(e) {
+      e.preventDefault();
+      const id = document.getElementById('editTxId').value || 'tx_' + Date.now();
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const date = document.getElementById('txDate').value;
+      const sourceWalletId = document.getElementById('txSourceWallet').value;
+      const destWalletId = document.getElementById('txDestWallet').value;
+      const category = (currentTxType === 'TRANSFER') ? 'Transfer Saldo' : document.getElementById('txCategory').value;
+      const notes = document.getElementById('txNotes').value || (currentTxType === 'TRANSFER' ? 'Pindah Dana' : category);
+
+      if (currentTxType === 'TRANSFER' && sourceWalletId === destWalletId) {
+        showToast('Dompet asal dan tujuan transfer tidak boleh sama!');
+        return;
+      }
+
+      const txData = {
+        id,
+        type: currentTxType,
+        amount,
+        date,
+        sourceWalletId,
+        destWalletId: currentTxType === 'TRANSFER' ? destWalletId : null,
+        category,
+        notes
+      };
+
+      const existingIndex = transactions.findIndex(t => t.id === id);
+      if (existingIndex >= 0) {
+        transactions[existingIndex] = txData;
+        showToast('Transaksi berhasil diperbarui');
+      } else {
+        transactions.unshift(txData);
+        showToast('Transaksi berhasil dicatat');
+      }
+
+      closeTxModal();
+      refreshAll();
+    }
+
+    function deleteTransaction(id) {
+      if (confirm('Apakah Anda yakin ingin menghapus transaksi ini? Saldo akan dikembalikan otomatis.')) {
+        transactions = transactions.filter(t => t.id !== id);
+        showToast('Transaksi telah dihapus');
+        refreshAll();
+      }
+    }
+
+    // RENDER RIWAYAT TRANSAKSI
+    function renderTransactions() {
+      const tbody = document.getElementById('txTableBody');
+      const emptyState = document.getElementById('txEmptyState');
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const filterWallet = document.getElementById('filterWallet').value;
+      const filterType = document.getElementById('filterType').value;
+
+      selectedFilterWalletId = filterWallet;
+
+      let filtered = transactions.filter(t => {
+        const matchSearch = (t.notes && t.notes.toLowerCase().includes(search)) || 
+                            (t.category && t.category.toLowerCase().includes(search));
+        const matchType = (filterType === 'ALL' || t.type === filterType);
+        
+        let matchWallet = true;
+        if (filterWallet !== 'ALL') {
+          matchWallet = (t.sourceWalletId === filterWallet || t.destWalletId === filterWallet);
+        }
+        return matchSearch && matchType && matchWallet;
+      });
+
+      // Sort by date descending
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        filtered.forEach(t => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+          const srcWallet = wallets.find(w => w.id === t.sourceWalletId);
+          const dstWallet = wallets.find(w => w.id === t.destWalletId);
+
+          let walletLabelHtml = '';
+          let badgeHtml = '';
+          let nominalColor = '';
+          let prefix = '';
+
+          if (t.type === 'EXPENSE') {
+            badgeHtml = `<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full"><i data-lucide="arrow-up-right" class="w-3 h-3"></i> ${t.category}</span>`;
+            walletLabelHtml = `<span class="font-medium text-slate-800">${srcWallet ? srcWallet.name : 'Akun Dihapus'}</span>`;
+            nominalColor = 'text-rose-600 font-bold';
+            prefix = '- ';
+          } else if (t.type === 'INCOME') {
+            badgeHtml = `<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><i data-lucide="arrow-down-left" class="w-3 h-3"></i> ${t.category}</span>`;
+            walletLabelHtml = `<span class="font-medium text-slate-800">${srcWallet ? srcWallet.name : 'Akun Dihapus'}</span>`;
+            nominalColor = 'text-emerald-600 font-bold';
+            prefix = '+ ';
+          } else {
+            badgeHtml = `<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full"><i data-lucide="arrow-left-right" class="w-3 h-3"></i> Transfer</span>`;
+            walletLabelHtml = `<div class="text-xs font-medium text-slate-800 flex items-center gap-1"><span>${srcWallet ? srcWallet.name : '?'}</span> <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i> <span>${dstWallet ? dstWallet.name : '?'}</span></div>`;
+            nominalColor = 'text-blue-600 font-bold';
+            prefix = '⇆ ';
+          }
+
+          tr.innerHTML = `
+            <td class="py-3 px-4 text-xs font-mono text-slate-500 whitespace-nowrap">${t.date}</td>
+            <td class="py-3 px-4">${badgeHtml}</td>
+            <td class="py-3 px-4">${walletLabelHtml}</td>
+            <td class="py-3 px-4 text-xs font-medium text-slate-600">${t.notes || '-'}</td>
+            <td class="py-3 px-4 text-right text-xs whitespace-nowrap ${nominalColor}">${prefix}${formatIDR(t.amount)}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="deleteTransaction('${t.id}')" title="Hapus" class="text-slate-400 hover:text-rose-600 p-1 transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+      lucide.createIcons();
+    }
+
+    // MODAL DOMPET / REKENING HANDLERS
+    function openWalletModal() {
+      document.getElementById('walletModal').classList.remove('hidden');
+      renderModalWalletList();
+      resetWalletForm();
+      lucide.createIcons();
+    }
+
+    function closeWalletModal() {
+      document.getElementById('walletModal').classList.add('hidden');
+    }
+
+    function renderModalWalletList() {
+      const container = document.getElementById('modalWalletList');
+      container.innerHTML = '';
+      wallets.forEach(w => {
+        const bal = calculateWalletBalance(w.id);
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-white text-xs';
+        div.innerHTML = `
+          <div>
+            <span class="font-bold text-slate-800">${w.name}</span>
+            <span class="text-slate-600 ml-1">(${w.type})</span>
+            <div class="text-[11px] text-slate-600">Saldo Awal: ${formatIDR(w.initialBalance)} | Terkini: <strong>${formatIDR(bal)}</strong></div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="editWallet('${w.id}')" class="p-1 text-slate-400 hover:text-brand-600"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
+            <button onclick="deleteWallet('${w.id}')" class="p-1 text-slate-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+      lucide.createIcons();
+    }
+
+    function saveWallet(e) {
+      e.preventDefault();
+      const id = document.getElementById('editWalletId').value || 'w_' + Date.now();
+      const name = document.getElementById('walletName').value.trim();
+      const type = document.getElementById('walletType').value;
+      const initialBalance = parseFloat(document.getElementById('walletInitialBalance').value) || 0;
+      const color = document.getElementById('walletColor').value;
+
+      const existingIndex = wallets.findIndex(w => w.id === id);
+      if (existingIndex >= 0) {
+        wallets[existingIndex] = { ...wallets[existingIndex], name, type, initialBalance, color };
+        showToast('Rekening / Dompet berhasil diperbarui');
+      } else {
+        wallets.push({ id, name, type, initialBalance, color });
+        showToast('Rekening / Dompet baru berhasil ditambahkan');
+      }
+
+      resetWalletForm();
+      renderModalWalletList();
+      refreshAll();
+    }
+
+    function editWallet(id) {
+      const w = wallets.find(item => item.id === id);
+      if (!w) return;
+      document.getElementById('editWalletId').value = w.id;
+      document.getElementById('walletName').value = w.name;
+      document.getElementById('walletType').value = w.type;
+      document.getElementById('walletInitialBalance').value = w.initialBalance;
+      document.getElementById('walletColor').value = w.color || 'blue';
+      document.getElementById('walletFormTitle').textContent = 'Edit Rekening / Dompet';
+      document.getElementById('btnCancelEditWallet').classList.remove('hidden');
+    }
+
+    function resetWalletForm() {
+      document.getElementById('editWalletId').value = '';
+      document.getElementById('walletName').value = '';
+      document.getElementById('walletInitialBalance').value = '';
+      document.getElementById('walletFormTitle').textContent = 'Tambah Akun Baru';
+      document.getElementById('btnCancelEditWallet').classList.add('hidden');
+    }
+
+    function deleteWallet(id) {
+      if (wallets.length <= 1) {
+        alert('Anda minimal harus memiliki 1 akun dompet/rekening.');
+        return;
+      }
+      if (confirm('Hapus akun ini? Riwayat transaksi terkait akan tetap tercatat namun akun tidak lagi aktif.')) {
+        wallets = wallets.filter(w => w.id !== id);
+        showToast('Akun berhasil dihapus');
+        renderModalWalletList();
+        refreshAll();
+      }
+    }
+
+    // MODAL TRANSAKSI HANDLERS
+    function openTxModal() {
+      document.getElementById('txModal').classList.remove('hidden');
+      document.getElementById('txForm').reset();
+      document.getElementById('editTxId').value = '';
+      document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+      setTxType('EXPENSE');
+      lucide.createIcons();
+    }
+
+    function closeTxModal() {
+      document.getElementById('txModal').classList.add('hidden');
+    }
+
+    // CHARTS (Chart.js)
+    function renderCharts() {
+      // 1. Expense Donut Chart
+      const catTotals = {};
+      transactions.filter(t => t.type === 'EXPENSE').forEach(t => {
+        catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount);
+      });
+
+      const catLabels = Object.keys(catTotals);
+      const catData = Object.values(catTotals);
+
+      const ctxExp = document.getElementById('expenseCategoryChart').getContext('2d');
+      if (expenseChartInstance) expenseChartInstance.destroy();
+
+      if (catData.length === 0) {
+        expenseChartInstance = new Chart(ctxExp, {
+          type: 'doughnut',
+          data: {
+            labels: ['Belum Ada Data'],
+            datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      } else {
+        expenseChartInstance = new Chart(ctxExp, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels,
+            datasets: [{
+              data: catData,
+              backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#ec4899', '#8b5cf6']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+            }
+          }
+        });
+      }
+
+      // 2. Wallet Balance Bar Chart
+      const walletLabels = wallets.map(w => w.name);
+      const walletBalances = wallets.map(w => calculateWalletBalance(w.id));
+
+      const ctxBal = document.getElementById('walletBalanceChart').getContext('2d');
+      if (balanceChartInstance) balanceChartInstance.destroy();
+
+      balanceChartInstance = new Chart(ctxBal, {
+        type: 'bar',
+        data: {
+          labels: walletLabels,
+          datasets: [{
+            label: 'Saldo Terkini (Rp)',
+            data: walletBalances,
+            backgroundColor: '#059669',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) {
+                  return 'Rp ' + (val >= 1000000 ? (val / 1000000).toFixed(1) + 'M' : (val / 1000).toFixed(0) + 'k');
+                },
+                font: { size: 10 }
+              }
+            },
+            x: {
+              ticks: { font: { size: 10 } }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // EXPORT TO CSV
+    function exportToCSV() {
+      if (transactions.length === 0) {
+        alert('Belum ada transaksi untuk diekspor.');
+        return;
+      }
+      let csv = 'ID,Tanggal,Tipe,Kategori,Sumber Dompet,Tujuan Dompet,Keterangan,Nominal\n';
+      transactions.forEach(t => {
+        const src = wallets.find(w => w.id === t.sourceWalletId)?.name || '';
+        const dst = wallets.find(w => w.id === t.destWalletId)?.name || '';
+        csv += `"${t.id}","${t.date}","${t.type}","${t.category}","${src}","${dst}","${(t.notes || '').replace(/"/g, '""')}","${t.amount}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Catatan_Keuangan_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // HELPER: FORMAT RUPIAH
+    function formatIDR(num) {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0
+      }).format(num || 0);
+    }
+
+    // TOAST
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
